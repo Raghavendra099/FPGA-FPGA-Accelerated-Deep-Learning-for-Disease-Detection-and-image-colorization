@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block page_title %}New Medical Image Analysis & QR Session{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Option A: QR-Based Mobile Image Upload -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Option A: Smartphone QR Code Upload</h2>
+        <p class="card-subtitle">Generate a temporary, secure QR session to upload scans directly from your mobile camera or photo library.</p>
+      </div>
+      <span class="badge badge-info">Recommended</span>
+    </div>
+
+    <form method="POST" action="{% url 'uploads:create_session' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="modality">Expected Imaging Modality</label>
+        <select id="modality" name="modality" class="form-select">
+          <option value="AUTO" selected>Auto-Detect / Select During Human Review</option>
+          <option value="CHEST_XRAY">Chest X-Ray (Planar Radiography)</option>
+          <option value="CHEST_CT">Chest CT (Computed Tomography)</option>
+          <option value="BRAIN_MRI">Brain MRI (Cranial Resonance)</option>
+          <option value="OTHER">Other / General Grayscale Scan</option>
+        </select>
+        <small style="color: var(--text-muted); font-size: 12px; margin-top: 4px; display: block;">
+          Session tokens are cryptographically generated and expire automatically after 30 minutes.
+        </small>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6"/><rect x="15" y="3" width="6" height="6"/><rect x="3" y="15" width="6" height="6"/></svg>
+        Generate QR Code for Phone Scan
+      </button>
+    </form>
+  </div>
+
+  <!-- Option B: Direct Desktop File Upload -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Option B: Direct Desktop Upload</h2>
+        <p class="card-subtitle">Select an existing medical scan directly from your local computer files.</p>
+      </div>
+    </div>
+
+    <form method="POST" action="{% url 'uploads:direct_upload' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label" for="direct_file">Select Medical Scan (JPEG / PNG)</label>
+        <input type="file" id="direct_file" name="image" class="form-control" accept="image/jpeg,image/png,image/jpg" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="direct_modality">Imaging Modality</label>
+        <select id="direct_modality" name="modality" class="form-select">
+          <option value="CHEST_XRAY" selected>Chest X-Ray</option>
+          <option value="CHEST_CT">Chest CT</option>
+          <option value="BRAIN_MRI">Brain MRI</option>
+          <option value="OTHER">Other Grayscale Scan</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-navy" style="width: 100%; padding: 12px;">
+        Upload to Pending Review Queue
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Sample Medical Scans Quick Test Box -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Sample Research Medical Scans (Ready for Immediate Testing)</h3>
+      <p class="card-subtitle">Pre-generated test scans available in media/sample_scans/ for rapid validation.</p>
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+    <div style="background: var(--bg-subtle); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+      <h4 style="font-size: 14px; font-weight: 700; color: var(--primary-navy); margin-bottom: 4px;">1. Thoracic Radiograph</h4>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Planar Chest X-Ray for Pathology & Grad-CAM classification.</p>
+      <code style="font-size: 11px; background: #fff; padding: 2px 6px; border: 1px solid var(--border-subtle); border-radius: 4px; display: block; margin-bottom: 8px;">media/sample_scans/sample_chest_xray.png</code>
+      <a href="/media/sample_scans/sample_chest_xray.png" target="_blank" class="btn btn-outline btn-sm">Preview Scan</a>
+    </div>
+
+    <div style="background: var(--bg-subtle); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+      <h4 style="font-size: 14px; font-weight: 700; color: var(--primary-navy); margin-bottom: 4px;">2. Chest CT Axial Slice</h4>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Thoracic Computed Tomography slice with focal pulmonary nodule.</p>
+      <code style="font-size: 11px; background: #fff; padding: 2px 6px; border: 1px solid var(--border-subtle); border-radius: 4px; display: block; margin-bottom: 8px;">media/sample_scans/sample_chest_ct.png</code>
+      <a href="/media/sample_scans/sample_chest_ct.png" target="_blank" class="btn btn-outline btn-sm">Preview Scan</a>
+    </div>
+
+    <div style="background: var(--bg-subtle); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+      <h4 style="font-size: 14px; font-weight: 700; color: var(--primary-navy); margin-bottom: 4px;">3. Brain MRI Axial Slice</h4>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Cranial MRI slice with hyperintense intracranial lesion for U-Net.</p>
+      <code style="font-size: 11px; background: #fff; padding: 2px 6px; border: 1px solid var(--border-subtle); border-radius: 4px; display: block; margin-bottom: 8px;">media/sample_scans/sample_brain_mri.png</code>
+      <a href="/media/sample_scans/sample_brain_mri.png" target="_blank" class="btn btn-outline btn-sm">Preview Scan</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

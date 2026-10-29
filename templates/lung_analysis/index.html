@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block page_title %}Lung Disease Analysis — Chest CT Nodule Screening{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+  <h2 style="font-size: 18px; font-weight: 700; color: var(--primary-navy);">Thoracic CT Pulmonary Nodule Localization</h2>
+  <p style="font-size: 13px; color: var(--text-muted);">
+    Axial chest CT screening pipeline detecting focal high-density opacities within lung parenchyma.
+  </p>
+</div>
+
+<!-- Nodule vs. Cancer Disclaimer -->
+<div class="alert alert-warning" style="margin-bottom: 20px;">
+  <span>
+    <b>CLINICAL DISTINCTION NOTICE:</b> This module identifies suspicious pulmonary nodules (focal radiologic densities).
+    Nodule detection <b>does not establish malignancy or diagnose lung cancer</b>. Definite diagnosis requires histopathology,
+    biopsy, and multi-slice clinical assessment.
+  </span>
+</div>
+
+{% if selected_image and analysis %}
+<div class="review-layout-grid">
+  <!-- Left Column: CT Scan with Nodule Overlays -->
+  <div class="card viewer-card">
+    <div class="viewer-toolbar">
+      <div style="font-size: 13px; font-weight: 600;">Chest CT Nodule Localization View</div>
+      <span class="badge badge-warning">{{ analysis.primary_finding }}</span>
+    </div>
+
+    <div class="viewer-viewport">
+      {% if analysis.detection_results and analysis.detection_results.overlay_path %}
+      <img src="/media/{{ analysis.detection_results.overlay_path }}" alt="Detected CT Nodules">
+      {% else %}
+      <img src="/media/{{ selected_image.stored_path }}" alt="Original CT Scan">
+      {% endif %}
+    </div>
+
+    <div style="padding: 10px 16px; background: var(--bg-subtle); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+      <span><b>Scan:</b> {{ selected_image.filename }}</span>
+      <span><b>Modality:</b> CHEST_CT</span>
+      <span><b>Detected Candidates:</b> {{ analysis.detection_results.nodule_count|default:0 }}</span>
+    </div>
+  </div>
+
+  <!-- Right Column: Nodule Measurements & Findings -->
+  <div>
+    <div class="card">
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-navy); margin-bottom: 12px;">
+        Detected Nodule Candidates
+      </h3>
+
+      {% if analysis.detection_results.nodules %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Location</th>
+              <th>Diameter</th>
+              <th>Suspicion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for n in analysis.detection_results.nodules %}
+            <tr>
+              <td><b>#{{ n.nodule_id }}</b></td>
+              <td>{{ n.location }}</td>
+              <td style="font-weight: 700; color: var(--primary-navy);">{{ n.diameter_mm }} mm</td>
+              <td>
+                <span class="badge {% if n.suspicion_score > 0.8 %}badge-danger{% else %}badge-warning{% endif %}">
+                  {{ n.suspicion_score }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="background: #ECFDF5; padding: 14px; border-radius: var(--radius-sm); border: 1px solid #A7F3D0; color: #065F46; font-size: 13px;">
+        ✓ Clear lung parenchyma. No focal nodular opacities exceeding threshold were localized on this slice.
+      </div>
+      {% endif %}
+
+      <div style="margin-top: 18px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+        <a href="{% url 'reports:download' analysis.analysis_id %}" class="btn btn-primary" style="width: 100%;">
+          Download Complete Research Report (PDF)
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- Selection Card -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Select Chest CT Scan to Analyze</h3>
+    <a href="{% url 'uploads:direct_upload' %}" class="btn btn-primary btn-sm">+ Upload CT Scan</a>
+  </div>
+
+  {% if ct_images %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
+    {% for img in ct_images %}
+    <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column;">
+      <img src="/media/{{ img.stored_path }}" alt="CT Scan" style="width: 100%; height: 140px; object-fit: cover;">
+      <div style="padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-weight: 700; font-size: 13px; color: var(--primary-navy);">{{ img.filename }}</div>
+        <a href="{% url 'review:detail' img.image_id %}" class="btn btn-primary btn-sm" style="margin-top: 10px;">
+          Open in Review / Analyze
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p class="empty-state-text">
+      No Chest CT scans currently uploaded. Upload a thoracic CT scan or use the pre-generated sample scan:
+      <br/><code>media/sample_scans/sample_chest_ct.png</code>
+    </p>
+    <a href="{% url 'uploads:create_session' %}" class="btn btn-primary">Start QR Upload Session</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block page_title %}AI Analysis Findings & Clinical Explanation{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700; color: var(--primary-navy);">
+      Analysis Reference: <span style="font-family: monospace; color: var(--accent-teal);">{{ analysis.analysis_id }}</span>
+    </h2>
+    <p style="font-size: 12.5px; color: var(--text-muted);">
+      Executed on {{ analysis.completed_at|default:analysis.created_at|date:"Y-m-d H:i:s" }} UTC • Latency: {{ analysis.execution_time_seconds }}s
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'reports:download' analysis.analysis_id %}" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF Report
+    </a>
+  </div>
+</div>
+
+<!-- Primary Diagnostic Header Card -->
+<div class="card" style="border-left: 4px solid var(--accent-teal);">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Primary Evaluated Finding</span>
+      <h3 style="font-size: 22px; font-weight: 800; color: var(--primary-navy); margin-top: 2px;">
+        {{ analysis.primary_finding }}
+      </h3>
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <span class="badge badge-navy">Modality: {{ analysis.modality }}</span>
+        <span class="badge badge-info">Task: {{ analysis.task }}</span>
+        <span class="badge {% if 'High' in analysis.severity or 'Moderate' in analysis.severity %}badge-warning{% else %}badge-success{% endif %}">
+          Severity: {{ analysis.severity }}
+        </span>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Confidence Level</span>
+      <div style="font-size: 32px; font-weight: 800; color: var(--accent-teal); line-height: 1;">
+        {% widthratio analysis.confidence 1 100 %}%
+      </div>
+      <span style="font-size: 11px; color: var(--text-muted);">Calibrated Softmax</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main Visualization & Analysis Section -->
+<div class="review-layout-grid">
+  <!-- Left Column: Visualizer Viewport with Tabs -->
+  <div class="card viewer-card">
+    <div class="card-header" style="border: none; padding-bottom: 0;">
+      <div class="view-mode-tabs">
+        <button type="button" class="view-tab-btn active" data-layer="layerOrig">Original Grayscale</button>
+        {% if analysis.gradcam_path %}
+        <button type="button" class="view-tab-btn" data-layer="layerGradCam">Grad-CAM Heatmap</button>
+        {% endif %}
+        {% if analysis.colorized_path %}
+        <button type="button" class="view-tab-btn" data-layer="layerColorized">Radiomic Colorized</button>
+        {% endif %}
+        {% if analysis.segmentation_results and analysis.segmentation_results.overlay_path %}
+        <button type="button" class="view-tab-btn" data-layer="layerBrainOverlay">Tumor Segmentation Overlay</button>
+        {% endif %}
+        {% if analysis.detection_results and analysis.detection_results.overlay_path %}
+        <button type="button" class="view-tab-btn" data-layer="layerLungOverlay">Nodule Bounding Overlay</button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="viewer-viewport" style="position: relative;">
+      <!-- Layer 1: Original Image -->
+      <div id="layerOrig" class="visualizer-layer" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+        <img src="/media/{{ image.stored_path }}" alt="Original Scan" style="max-height: 90%; max-width: 90%;">
+      </div>
+
+      <!-- Layer 2: Grad-CAM Heatmap -->
+      {% if analysis.gradcam_path %}
+      <div id="layerGradCam" class="visualizer-layer" style="width: 100%; height: 100%; display: none;">
+        <img src="/media/{{ analysis.gradcam_path }}" alt="Grad-CAM Saliency" style="max-height: 90%; max-width: 90%; margin: auto;">
+      </div>
+      {% endif %}
+
+      <!-- Layer 3: Colorized Scan -->
+      {% if analysis.colorized_path %}
+      <div id="layerColorized" class="visualizer-layer" style="width: 100%; height: 100%; display: none;">
+        <img src="/media/{{ analysis.colorized_path }}" alt="Colorized Scan" style="max-height: 90%; max-width: 90%; margin: auto;">
+      </div>
+      {% endif %}
+
+      <!-- Layer 4: Brain Tumor Segmentation Overlay -->
+      {% if analysis.segmentation_results and analysis.segmentation_results.overlay_path %}
+      <div id="layerBrainOverlay" class="visualizer-layer" style="width: 100%; height: 100%; display: none;">
+        <img src="/media/{{ analysis.segmentation_results.overlay_path }}" alt="Tumor Overlay" style="max-height: 90%; max-width: 90%; margin: auto;">
+      </div>
+      {% endif %}
+
+      <!-- Layer 5: Lung CT Nodule Bounding Overlay -->
+      {% if analysis.detection_results and analysis.detection_results.overlay_path %}
+      <div id="layerLungOverlay" class="visualizer-layer" style="width: 100%; height: 100%; display: none;">
+        <img src="/media/{{ analysis.detection_results.overlay_path }}" alt="Nodule Overlay" style="max-height: 90%; max-width: 90%; margin: auto;">
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Explanation footer note -->
+    <div style="padding: 10px 16px; background: var(--bg-subtle); font-size: 11.5px; color: var(--text-muted);">
+      {% if analysis.gradcam_path %}
+      <b>Grad-CAM Note:</b> Highlights convolutional gradient activation zones. Warm red/amber represents high positive model contribution.
+      {% elif analysis.colorized_path %}
+      <b>Colorization Note:</b> Multi-spectral radiomic density calibration mapping tissue attenuation.
+      {% elif analysis.segmentation_results %}
+      <b>Segmentation Note:</b> U-Net pixel-wise probability contour delineating intracranial lesion margins.
+      {% elif analysis.detection_results %}
+      <b>Nodule Detection Note:</b> Focal pulmonary opacities isolated within low-attenuation lung cavities.
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right Column: Probabilities, Uncertainty & Quality -->
+  <div>
+    <!-- Class Probability Distribution (Chest X-Ray) -->
+    {% if analysis.predictions %}
+    <div class="card">
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--primary-navy); margin-bottom: 10px;">
+        Pathology Probability Distribution
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        {% for pred in analysis.predictions %}
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 2px;">
+            <span style="font-weight: 600; color: var(--primary-navy);">{{ pred.label }}</span>
+            <span style="font-weight: 700; color: var(--accent-teal);">{% widthratio pred.probability 1 100 %}%</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: var(--bg-subtle); border-radius: 3px; overflow: hidden;">
+            <div style="width: {% widthratio pred.probability 1 100 %}%; height: 100%; background: var(--accent-teal);"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Uncertainty & Reliability Indicators -->
+    {% if analysis.uncertainty %}
+    <div class="card">
+      <div class="card-header" style="margin-bottom: 8px; padding-bottom: 8px;">
+        <h4 style="font-size: 14px; font-weight: 700; color: var(--primary-navy);">Reliability & Uncertainty</h4>
+        <span class="badge {% if analysis.uncertainty.review_required %}badge-warning{% else %}badge-success{% endif %}">
+          {{ analysis.uncertainty.status_badge }}
+        </span>
+      </div>
+
+      <div class="quality-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="quality-cell">
+          <div class="quality-cell-val">{{ analysis.uncertainty.normalized_entropy }}</div>
+          <div class="quality-cell-label">Normalized Entropy</div>
+        </div>
+        <div class="quality-cell">
+          <div class="quality-cell-val">{{ analysis.uncertainty.prediction_margin }}</div>
+          <div class="quality-cell-label">Top-1/Top-2 Margin</div>
+        </div>
+      </div>
+
+      {% if analysis.uncertainty.review_reasons %}
+      <div style="margin-top: 10px; font-size: 11.5px; color: #92400E; background: #FEF3C7; padding: 6px 10px; border-radius: 4px;">
+        <b>Triggered Flags:</b>
+        <ul style="margin-left: 14px; margin-top: 2px;">
+          {% for r in analysis.uncertainty.review_reasons %}
+          <li>{{ r }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Image Quality Check Results -->
+    {% if analysis.quality_assessment %}
+    <div class="card">
+      <div class="card-header" style="margin-bottom: 8px; padding-bottom: 8px;">
+        <h4 style="font-size: 14px; font-weight: 700; color: var(--primary-navy);">Image Quality Verification</h4>
+        <span class="badge badge-success">{{ analysis.quality_assessment.status }}</span>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+        Score: <b>{{ analysis.quality_assessment.score }}/100</b> • Blur Var: <b>{{ analysis.quality_assessment.blur_variance }}</b> • Contrast: <b>{{ analysis.quality_assessment.rms_contrast }}</b>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/visualizer.js"></script>
+{% endblock %}

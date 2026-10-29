@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block page_title %}AI Medical Image Colorization Studio{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700; color: var(--primary-navy);">Radiomic Spectral Colorization Workspace</h2>
+    <p style="font-size: 13px; color: var(--text-muted);">
+      Produces multi-spectral tissue density representations from grayscale medical scans.
+    </p>
+  </div>
+  {% if colorization %}
+  <div style="display: flex; gap: 10px;">
+    <a href="/media/{{ colorization.colorized_path }}" download="SmartMed_Colorized_{{ selected_image.image_id }}.png" class="btn btn-primary btn-sm">
+      Download Colorized Image
+    </a>
+    <a href="/media/{{ colorization.comparison_path }}" download="SmartMed_Comparison_{{ selected_image.image_id }}.png" class="btn btn-outline btn-sm">
+      Download Comparison
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Safeguard Notice -->
+<div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-left: 4px solid #16A34A; padding: 10px 16px; border-radius: var(--radius-sm); font-size: 12px; color: #166534; margin-bottom: 20px;">
+  <b>CLINICAL SAFEGUARD:</b> Colorization is a model-derived tissue attenuation enhancement. It does not synthesize or recover hidden anatomical information and must be evaluated alongside the original grayscale radiograph.
+</div>
+
+{% if selected_image and colorization %}
+<!-- Main Workspace: Interactive Before-and-After Slider -->
+<div class="card" style="padding: 16px;">
+  <div class="viewer-toolbar">
+    <div style="font-size: 13px; font-weight: 600;">
+      Interactive Before & After Comparison Slider (Drag white handle left/right)
+    </div>
+    <div class="viewer-tools">
+      <span class="badge badge-info">{{ colorization.palette_mode }}</span>
+    </div>
+  </div>
+
+  <div class="comparison-container" id="comparisonSliderContainer">
+    <!-- Base Image: Colorized Output -->
+    <img src="/media/{{ colorization.colorized_path }}" alt="Colorized Medical Scan" class="comparison-image">
+
+    <!-- Overlaid Image: Original Grayscale (Clipped by overlay width) -->
+    <div class="comparison-overlay" id="comparisonOverlay">
+      <img src="/media/{{ selected_image.stored_path }}" alt="Original Grayscale Scan">
+    </div>
+
+    <!-- Draggable Slider Handle -->
+    <div class="comparison-handle" id="comparisonHandle">
+      <div class="comparison-handle-knob">↔</div>
+    </div>
+
+    <!-- Tags -->
+    <div class="comparison-tag tag-before">Original Grayscale</div>
+    <div class="comparison-tag tag-after">Colorized Radiomic</div>
+  </div>
+
+  <!-- Parameter Details -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; background: var(--bg-subtle); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 12px;">
+    <div>
+      <span style="color: var(--text-muted); text-transform: uppercase;">Engine Architecture:</span>
+      <div style="font-weight: 700; color: var(--primary-navy);">{{ colorization.model_id }}</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); text-transform: uppercase;">Palette Calibration:</span>
+      <div style="font-weight: 700; color: var(--accent-teal);">{{ colorization.palette_mode }}</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); text-transform: uppercase;">Image Resolution:</span>
+      <div style="font-weight: 700;">{{ selected_image.dimensions.0 }}x{{ selected_image.dimensions.1 }}px</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); text-transform: uppercase;">Edge Retention:</span>
+      <div style="font-weight: 700;">15% Baseline Blend</div>
+    </div>
+  </div>
+</div>
+
+{% elif selected_image %}
+<!-- Image selected but colorization not yet generated -->
+<div class="card" style="text-align: center; padding: 40px 20px;">
+  <h3 style="font-size: 17px; font-weight: 700; color: var(--primary-navy); margin-bottom: 6px;">
+    Generate Colorization for {{ selected_image.filename }}
+  </h3>
+  <p style="font-size: 13px; color: var(--text-muted); max-width: 460px; margin: 0 auto 20px auto;">
+    Choose an anatomical radiomic colormap palette and execute the continuous encoder-decoder neural network.
+  </p>
+
+  <form method="POST" action="{% url 'colorization:run' selected_image.image_id %}" style="max-width: 380px; margin: 0 auto;">
+    {% csrf_token %}
+    <div class="form-group" style="text-align: left;">
+      <label class="form-label" for="palette_mode">Color Calibration Spectrum</label>
+      <select id="palette_mode" name="palette_mode" class="form-select">
+        <option value="SPECTRAL_RADIOMIC" selected>Spectral Radiomic (Tissue Attenuation Mapping)</option>
+        <option value="ENHANCED_THERMAL">Radiologic Thermal (Inferno Colormap)</option>
+        <option value="CLINICAL_VIRIDIS">Clinical Contrast (Viridis Gradient)</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
+      Run Colorization Model
+    </button>
+  </form>
+</div>
+
+{% else %}
+<!-- Zero-state / Selector view -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Select a Medical Scan for Colorization</h3>
+    <a href="{% url 'uploads:direct_upload' %}" class="btn btn-outline btn-sm">Upload New Scan</a>
+  </div>
+
+  {% if recent_images %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+    {% for img in recent_images %}
+    <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column;">
+      <img src="/media/{{ img.stored_path }}" alt="Scan" style="width: 100%; height: 140px; object-fit: cover;">
+      <div style="padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="font-weight: 700; font-size: 13px; color: var(--primary-navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            {{ img.filename }}
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            {{ img.modality }} • {{ img.dimensions.0 }}x{{ img.dimensions.1 }}px
+          </div>
+        </div>
+        <a href="?image_id={{ img.image_id }}" class="btn btn-primary btn-sm" style="margin-top: 10px; width: 100%;">
+          Open in Studio
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p class="empty-state-text">No scans available. Please upload a medical scan to launch the Colorization Studio.</p>
+    <a href="{% url 'uploads:create_session' %}" class="btn btn-primary">Create QR Upload Session</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/colorization_studio.js"></script>
+{% endblock %}

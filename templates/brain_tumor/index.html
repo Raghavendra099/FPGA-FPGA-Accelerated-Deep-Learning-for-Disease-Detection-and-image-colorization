@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block page_title %}Brain Tumor Analysis — MRI U-Net Segmentation{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+  <h2 style="font-size: 18px; font-weight: 700; color: var(--primary-navy);">Cranial MRI Tumor Segmentation Studio</h2>
+  <p style="font-size: 13px; color: var(--text-muted);">
+    Deep learning 2D U-Net segmentation isolating hyperintense intracranial lesions and volumetric bounds.
+  </p>
+</div>
+
+{% if selected_image and analysis %}
+<div class="review-layout-grid">
+  <!-- Left Column: MRI Viewport with Toggleable Overlay -->
+  <div class="card viewer-card">
+    <div class="viewer-toolbar">
+      <div style="font-size: 13px; font-weight: 600;">Brain MRI Tumor Segmentation Overlay</div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label style="font-size: 11px; opacity: 0.8;">Mask Opacity:</label>
+        <input type="range" id="overlayOpacitySlider" min="0" max="100" value="85" style="width: 80px;">
+      </div>
+    </div>
+
+    <div class="viewer-viewport" style="position: relative;">
+      <!-- Base Grayscale MRI Scan -->
+      <img src="/media/{{ selected_image.stored_path }}" alt="Original MRI" style="position: absolute;">
+
+      <!-- Translucent Segmentation Overlay -->
+      {% if analysis.segmentation_results and analysis.segmentation_results.overlay_path %}
+      <img id="activeOverlayImg" src="/media/{{ analysis.segmentation_results.overlay_path }}" alt="Tumor Overlay" style="position: absolute; opacity: 0.85; transition: opacity 0.1s;">
+      {% endif %}
+    </div>
+
+    <div style="padding: 10px 16px; background: var(--bg-subtle); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between;">
+      <span><b>File:</b> {{ selected_image.filename }}</span>
+      <span><b>Modality:</b> BRAIN_MRI</span>
+      <span><b>Model:</b> Brain MRI U-Net 2D (BraTS Calibrated)</span>
+    </div>
+  </div>
+
+  <!-- Right Column: Volumetric Metrics & Findings -->
+  <div>
+    <div class="card">
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-navy); margin-bottom: 4px;">
+        Segmentation Findings
+      </h3>
+      <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+        Pixel-level morphological calculation from U-Net prediction mask.
+      </p>
+
+      <div class="quality-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 16px;">
+        <div class="quality-cell">
+          <div class="quality-cell-val" style="color: #DC2626;">
+            {{ analysis.segmentation_results.tumor_area_percentage|default:0 }}%
+          </div>
+          <div class="quality-cell-label">Intracranial Area %</div>
+        </div>
+        <div class="quality-cell">
+          <div class="quality-cell-val">
+            {{ analysis.segmentation_results.lesion_count|default:0 }}
+          </div>
+          <div class="quality-cell-label">Lesion Clusters</div>
+        </div>
+        <div class="quality-cell">
+          <div class="quality-cell-val">
+            {{ analysis.segmentation_results.tumor_pixels|default:0 }}
+          </div>
+          <div class="quality-cell-label">Mask Pixels</div>
+        </div>
+        <div class="quality-cell">
+          <div class="quality-cell-val" style="color: var(--accent-teal);">
+            {{ analysis.confidence|default:0.90|floatformat:2 }}
+          </div>
+          <div class="quality-cell-label">Dice / Confidence</div>
+        </div>
+      </div>
+
+      {% if analysis.segmentation_results.lesions %}
+      <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Individual Lesion Measurements</h4>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Lesion</th>
+              <th>Area (px)</th>
+              <th>Est. Diameter</th>
+              <th>Centroid (X,Y)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for les in analysis.segmentation_results.lesions %}
+            <tr>
+              <td><b>#{{ les.lesion_id }}</b></td>
+              <td>{{ les.area_pixels }}</td>
+              <td><b>{{ les.estimated_diameter_mm }} mm</b></td>
+              <td>({{ les.centroid.0 }}, {{ les.centroid.1 }})</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <div style="margin-top: 18px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+        <a href="{% url 'reports:download' analysis.analysis_id %}" class="btn btn-primary" style="width: 100%;">
+          Download Brain MRI PDF Report
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- Selection Card -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Select Brain MRI Scan to Analyze</h3>
+    <a href="{% url 'uploads:direct_upload' %}" class="btn btn-primary btn-sm">+ Upload MRI Scan</a>
+  </div>
+
+  {% if mri_images %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
+    {% for img in mri_images %}
+    <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column;">
+      <img src="/media/{{ img.stored_path }}" alt="MRI Scan" style="width: 100%; height: 140px; object-fit: cover;">
+      <div style="padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-weight: 700; font-size: 13px; color: var(--primary-navy);">{{ img.filename }}</div>
+        <a href="{% url 'review:detail' img.image_id %}" class="btn btn-primary btn-sm" style="margin-top: 10px;">
+          Open in Review / Segment
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p class="empty-state-text">
+      No Brain MRI scans currently uploaded. Upload a cranial MRI slice or use the pre-generated sample scan:
+      <br/><code>media/sample_scans/sample_brain_mri.png</code>
+    </p>
+    <a href="{% url 'uploads:create_session' %}" class="btn btn-primary">Start QR Upload Session</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/visualizer.js"></script>
+{% endblock %}

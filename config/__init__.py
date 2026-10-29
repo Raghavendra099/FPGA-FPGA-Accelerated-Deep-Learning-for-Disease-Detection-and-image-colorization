@@ -1,0 +1,3 @@
+"""
+SmartMed AI configuration package.
+"""

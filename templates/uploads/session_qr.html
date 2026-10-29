@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block page_title %}QR Code Mobile Image Upload Session{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center; max-width: 680px; margin: 0 auto; padding: 32px 24px;">
+  <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 8px;">
+    <span id="syncStatusBadge" class="badge badge-info">Initializing Real-Time Sync...</span>
+    <span class="badge badge-navy">Expires in 30 mins</span>
+  </div>
+
+  <h2 style="font-size: 20px; font-weight: 700; color: var(--primary-navy); margin-bottom: 6px;">
+    Scan with Smartphone Camera
+  </h2>
+  <p style="font-size: 13.5px; color: var(--text-muted); max-width: 520px; margin: 0 auto 20px auto;">
+    Open your mobile camera or browser and point it at this QR code.
+    Select an image from your gallery, preview, and tap upload.
+    This laptop screen will update automatically.
+  </p>
+
+  <!-- QR Code Image Box -->
+  <div class="qr-display-box">
+    <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code" class="qr-image">
+    
+    <div style="background: var(--bg-subtle); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 11px; word-break: break-all; margin-top: 8px;">
+      <span style="font-weight: 700; color: var(--text-muted);">Direct Upload Link:</span><br/>
+      <a href="{{ mobile_url }}" target="_blank" style="color: var(--accent-teal); text-decoration: none; font-weight: 600;">
+        {{ mobile_url }}
+      </a>
+    </div>
+
+    <div style="margin-top: 12px; padding: 10px 14px; background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; font-size: 12px; color: #92400E; text-align: left; display: flex; align-items: flex-start; gap: 8px;">
+      <span style="font-size: 16px; line-height: 1;">📱</span>
+      <span><b>Smartphone Connection Requirement:</b> Make sure your smartphone is connected to the <b>same Wi-Fi</b> (or connect your laptop to your phone's <b>Mobile Hotspot</b>). If the phone is on mobile data (5G), switch it to Wi-Fi.</span>
+    </div>
+  </div>
+
+  <!-- Session Information Grid -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; text-align: left; background: var(--bg-subtle); padding: 14px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+    <div>
+      <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Session ID:</span>
+      <div style="font-family: monospace; font-size: 13px; font-weight: 700; color: var(--primary-navy);">{{ session.session_id }}</div>
+    </div>
+    <div>
+      <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Target Modality:</span>
+      <div style="font-size: 13px; font-weight: 700; color: var(--accent-teal);">{{ session.requested_modality }}</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 24px; display: flex; justify-content: center; gap: 12px;">
+    <a href="{% url 'uploads:create_session' %}" class="btn btn-outline btn-sm">Generate Another Session</a>
+    <a href="{% url 'review:pending_list' %}" class="btn btn-navy btn-sm">Go to Pending Review Queue</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/websocket_client.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const badge = document.getElementById("syncStatusBadge");
+    const sessionId = "{{ session.session_id }}";
+
+    const syncClient = new SmartMedSyncClient({
+      sessionId: sessionId,
+      channelType: "session",
+      statusElement: badge,
+      onImageUploaded: (data) => {
+        showToast("Image received from smartphone! Redirecting to human review...", "success");
+        setTimeout(() => {
+          if (data && data.image_id) {
+            window.location.href = `/review/${data.image_id}/`;
+          } else {
+            window.location.href = "{% url 'review:pending_list' %}";
+          }
+        }, 1200);
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block page_title %}Security Audit Trail & Compliance Log{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Audit Trail Events (MongoDB audit_events)</h2>
+      <p class="card-subtitle">Immutable security log tracking user logins, QR sessions, human review decisions, and report downloads.</p>
+    </div>
+  </div>
+
+  {% if events %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Event ID</th>
+          <th>Actor</th>
+          <th>Action</th>
+          <th>Target Record</th>
+          <th>IP Address</th>
+          <th>Timestamp (UTC)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in events %}
+        <tr>
+          <td style="font-family: monospace; font-size: 12px; color: var(--text-muted);">{{ ev.event_id }}</td>
+          <td style="font-weight: 600; color: var(--primary-navy);">{{ ev.actor }}</td>
+          <td>
+            <span class="badge {% if 'SUCCESS' in ev.action or 'CONFIRMED' in ev.action %}badge-success{% elif 'FAILED' in ev.action or 'REJECTED' in ev.action %}badge-danger{% else %}badge-info{% endif %}">
+              {{ ev.action }}
+            </span>
+          </td>
+          <td style="font-family: monospace; font-size: 12px;">{{ ev.target_id|default:"—" }}</td>
+          <td>{{ ev.ip_address }}</td>
+          <td style="color: var(--text-muted);">{{ ev.created_at|date:"Y-m-d H:i:s" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p class="empty-state-text">No security audit events recorded yet.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,3 @@
+"""
+Lung Analysis app package.
+"""

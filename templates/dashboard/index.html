@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block page_title %}Clinical Overview Dashboard{% endblock %}
+
+{% block content %}
+<!-- Summary Metric Cards (Retrieved from MongoDB) -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Total Uploaded Scans</span>
+    <span class="stat-value">{{ stats.total_images }}</span>
+    <span class="stat-desc">Medical images in MongoDB</span>
+  </div>
+
+  <div class="stat-card {% if stats.pending_reviews > 0 %}alert-card{% endif %}">
+    <span class="stat-label">Awaiting Human Review</span>
+    <span class="stat-value" style="color: {% if stats.pending_reviews > 0 %}#EF4444{% else %}var(--primary-navy){% endif %};">
+      {{ stats.pending_reviews }}
+    </span>
+    <span class="stat-desc">Mandatory confirmation pending</span>
+  </div>
+
+  <div class="stat-card success-card">
+    <span class="stat-label">Analyses Completed</span>
+    <span class="stat-value">{{ stats.completed_analyses }}</span>
+    <span class="stat-desc">Inference pipelines finished</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Colorization Jobs</span>
+    <span class="stat-value">{{ stats.colorization_jobs }}</span>
+    <span class="stat-desc">Radiomic spectral enhancements</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Lung CT Analyses</span>
+    <span class="stat-value">{{ stats.lung_ct_jobs }}</span>
+    <span class="stat-desc">Thoracic nodule localizations</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Brain MRI Analyses</span>
+    <span class="stat-value">{{ stats.brain_mri_jobs }}</span>
+    <span class="stat-desc">U-Net tumor segmentations</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Processing Failures</span>
+    <span class="stat-value" style="color: {% if stats.failed_jobs > 0 %}#EF4444{% else %}var(--text-muted){% endif %};">
+      {{ stats.failed_jobs }}
+    </span>
+    <span class="stat-desc">Validation or execution errors</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Registered IoT Devices</span>
+    <span class="stat-value">{{ stats.registered_devices }}</span>
+    <span class="stat-desc">Active hardware gateways</span>
+  </div>
+</div>
+
+<!-- Quick Workflow Actions -->
+<div class="card" style="padding: 16px 20px; margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-navy);">Primary Research Workflows</h3>
+      <p style="font-size: 12.5px; color: var(--text-muted);">Launch mobile upload sessions or select modality-specific AI engines.</p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="{% url 'uploads:create_session' %}" class="btn btn-primary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6"/><rect x="15" y="3" width="6" height="6"/><rect x="3" y="15" width="6" height="6"/></svg>
+        Generate QR Session
+      </a>
+      <a href="{% url 'review:pending_list' %}" class="btn btn-outline btn-sm">
+        Review Pending Queue ({{ stats.pending_reviews }})
+      </a>
+      <a href="{% url 'colorization:studio' %}" class="btn btn-outline btn-sm">
+        Colorization Studio
+      </a>
+      <a href="{% url 'lung_analysis:index' %}" class="btn btn-outline btn-sm">
+        Lung CT Analysis
+      </a>
+      <a href="{% url 'brain_tumor:index' %}" class="btn btn-outline btn-sm">
+        Brain MRI Analysis
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Activity Table -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Recent Medical Scan Activity</h2>
+      <p class="card-subtitle">Chronological record of recent uploads and processing jobs in MongoDB.</p>
+    </div>
+    <a href="{% url 'analysis:history' %}" class="btn btn-outline btn-sm">View Complete History</a>
+  </div>
+
+  {% if activity_items %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Scan Reference</th>
+          <th>Modality</th>
+          <th>Filename</th>
+          <th>Size</th>
+          <th>Review Status</th>
+          <th>AI Processing</th>
+          <th>Primary Finding</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in activity_items %}
+        <tr>
+          <td>
+            <a href="{% url 'review:detail' item.image_id %}" style="font-family: monospace; font-weight: 700; color: var(--accent-teal); text-decoration: none;">
+              {{ item.image_id }}
+            </a>
+          </td>
+          <td>
+            <span class="badge badge-navy">{{ item.modality }}</span>
+          </td>
+          <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ item.filename }}
+          </td>
+          <td>{{ item.file_size_kb }} KB</td>
+          <td>
+            {% if item.review_status == 'CONFIRMED' %}
+            <span class="badge badge-success">Confirmed</span>
+            {% elif item.review_status == 'REJECTED' %}
+            <span class="badge badge-danger">Rejected</span>
+            {% else %}
+            <span class="badge badge-warning">Awaiting Review</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.processing_status == 'COMPLETED' %}
+            <span class="badge badge-success">Completed</span>
+            {% elif item.processing_status == 'PROCESSING' %}
+            <span class="badge badge-info">In Progress</span>
+            {% elif item.processing_status == 'FAILED' %}
+            <span class="badge badge-danger">Failed</span>
+            {% else %}
+            <span class="badge" style="background:#E2E8F0; color:#64748B;">Pending Confirmation</span>
+            {% endif %}
+          </td>
+          <td style="font-weight: 600; color: var(--primary-navy);">
+            {{ item.primary_finding|default:"—" }}
+          </td>
+          <td>
+            {% if item.review_status == 'PENDING' %}
+            <a href="{% url 'review:detail' item.image_id %}" class="btn btn-primary btn-sm">Review Now</a>
+            {% elif item.analysis_id %}
+            <a href="{% url 'analysis:detail' item.analysis_id %}" class="btn btn-outline btn-sm">View Results</a>
+            {% else %}
+            <a href="{% url 'review:detail' item.image_id %}" class="btn btn-outline btn-sm">Details</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">📋</div>
+    <h3 class="empty-state-title">No Medical Scans Uploaded Yet</h3>
+    <p class="empty-state-text">
+      The MongoDB database is currently empty. Start by creating a QR upload session to upload a scan from your phone,
+      or run a desktop upload.
+    </p>
+    <a href="{% url 'uploads:create_session' %}" class="btn btn-primary">Create First QR Session</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

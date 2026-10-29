@@ -1,0 +1,293 @@
+/* Two-Column Review Layout */
+.review-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 24px;
+}
+
+@media (max-width: 1080px) {
+  .review-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Medical Scan Interactive Viewer */
+.viewer-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background-color: var(--primary-navy-dark);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: #fff;
+}
+
+.viewer-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-btn {
+  background-color: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.tool-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.viewer-viewport {
+  background-color: #050B14;
+  height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.viewer-viewport:active {
+  cursor: grabbing;
+}
+
+.viewer-viewport img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  transition: transform 0.1s ease-out;
+  transform-origin: center center;
+  user-select: none;
+}
+
+/* Image Colorization Studio: Before-and-After Comparison Slider */
+.comparison-container {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  background-color: #050B14;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  user-select: none;
+}
+
+.comparison-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.comparison-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 50%; /* Initial split at 50% */
+  overflow: hidden;
+}
+
+.comparison-overlay img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.comparison-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  background-color: #fff;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.7);
+  cursor: ew-resize;
+  z-index: 10;
+}
+
+.comparison-handle-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-teal);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.comparison-tag {
+  position: absolute;
+  bottom: 16px;
+  padding: 4px 10px;
+  background: rgba(10, 37, 64, 0.85);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  z-index: 5;
+}
+.tag-before { left: 16px; }
+.tag-after { right: 16px; }
+
+/* Multi-Modal Toggle Tabs */
+.view-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.view-tab-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background-color: #fff;
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.view-tab-btn.active {
+  background-color: var(--primary-navy);
+  color: #fff;
+  border-color: var(--primary-navy);
+}
+
+/* Quality Metrics Grid */
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.quality-cell {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+}
+
+.quality-cell-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-navy);
+  margin-bottom: 2px;
+}
+
+.quality-cell-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Mobile QR Upload Screen (Stand-alone viewport) */
+.mobile-upload-body {
+  background-color: var(--primary-navy-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.mobile-upload-card {
+  background-color: #fff;
+  border-radius: var(--radius-lg);
+  max-width: 440px;
+  width: 100%;
+  padding: 28px 24px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.mobile-preview-box {
+  width: 100%;
+  height: 240px;
+  background-color: #F8FAFC;
+  border: 2px dashed #CBD5E1;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.mobile-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Progress Bar */
+.progress-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: 14px 0;
+  display: none;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background-color: var(--accent-teal);
+  transition: width 0.2s ease;
+}
+
+/* QR Code Display Screen on Laptop */
+.qr-display-box {
+  background-color: #fff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  display: inline-block;
+  box-shadow: var(--shadow-md);
+}
+
+.qr-image {
+  width: 240px;
+  height: 240px;
+  display: block;
+  margin: 0 auto 16px auto;
+}

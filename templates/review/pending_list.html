@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block page_title %}Pending Medical Image Review Queue{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Images Awaiting Authorized Human Confirmation</h2>
+      <p class="card-subtitle">
+        Mandatory clinician gate: Images uploaded via mobile QR or desktop must be confirmed before AI processing starts.
+      </p>
+    </div>
+    <div>
+      <span id="reviewQueueLiveBadge" class="badge badge-info">WebSocket Sync Active</span>
+    </div>
+  </div>
+
+  {% if pending_images %}
+  <div class="table-responsive">
+    <table class="table" id="pendingTable">
+      <thead>
+        <tr>
+          <th>Preview</th>
+          <th>Image ID</th>
+          <th>Original Filename</th>
+          <th>Uploaded Modality</th>
+          <th>Dimensions / Size</th>
+          <th>Upload Timestamp</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for img in pending_images %}
+        <tr>
+          <td style="width: 64px;">
+            <a href="{% url 'review:detail' img.image_id %}">
+              <img src="/media/{{ img.stored_path }}" alt="Scan" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-subtle);">
+            </a>
+          </td>
+          <td>
+            <a href="{% url 'review:detail' img.image_id %}" style="font-family: monospace; font-weight: 700; color: var(--accent-teal); text-decoration: none;">
+              {{ img.image_id }}
+            </a>
+          </td>
+          <td style="font-weight: 600; color: var(--primary-navy);">
+            {{ img.filename }}
+          </td>
+          <td>
+            <span class="badge badge-navy">{{ img.modality }}</span>
+          </td>
+          <td style="color: var(--text-muted);">
+            {{ img.dimensions.0 }}x{{ img.dimensions.1 }}px • {{ img.file_size_bytes|filesizeformat }}
+          </td>
+          <td style="color: var(--text-muted); font-size: 12.5px;">
+            {{ img.created_at|date:"Y-m-d H:i:s" }}
+          </td>
+          <td>
+            <a href="{% url 'review:detail' img.image_id %}" class="btn btn-primary btn-sm">
+              Review & Confirm
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">✅</div>
+    <h3 class="empty-state-title">No Pending Scans Awaiting Review</h3>
+    <p class="empty-state-text">
+      All uploaded scans have been confirmed or rejected. Scan a new QR code to receive mobile images in real time.
+    </p>
+    <a href="{% url 'uploads:create_session' %}" class="btn btn-primary">Create New QR Upload Session</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/websocket_client.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const badge = document.getElementById("reviewQueueLiveBadge");
+    const syncClient = new SmartMedSyncClient({
+      channelType: "review",
+      statusElement: badge,
+      onImageUploaded: (data) => {
+        showToast("New image uploaded from mobile phone! Refreshing list...", "info");
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    });
+  });
+</script>
+{% endblock %}

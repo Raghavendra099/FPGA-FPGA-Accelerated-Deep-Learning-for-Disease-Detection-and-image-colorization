@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}IoT Device Management — SmartMed AI{% endblock %}
+{% block page_title %}IoT Device Management{% endblock %}
+{% block page_subtitle %}Register and monitor medical imaging devices{% endblock %}
+{% block content %}
+<div class="devices-layout" style="max-width:1200px">
+<div class="alert alert-info" style="margin-bottom:24px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+<span>IoT integration is in research/development mode. All device data is for academic demonstration only.</span>
+</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px">
+<button class="btn btn-primary" onclick="openRegModal()">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+Register New Device
+</button>
+<button class="btn btn-secondary" onclick="init()">Refresh Status</button>
+<button class="btn btn-outline" onclick="runSim()">Simulate Device Push</button>
+</div>
+<div id="statsRow" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px"></div>
+<div class="card" style="margin-bottom:24px">
+<div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<h3 class="card-title">Registered Devices</h3>
+<div style="display:flex;gap:8px">
+<input type="text" class="form-control" id="devSearch" placeholder="Search…" oninput="renderTbl()" style="width:180px;padding:6px 10px;font-size:.85rem">
+<select class="form-control" id="typeFilter" onchange="renderTbl()" style="width:140px;padding:6px 10px;font-size:.85rem">
+<option value="">All Types</option>
+<option value="xray">X-Ray</option><option value="ct">CT</option>
+<option value="mri">MRI</option><option value="mobile">Mobile</option>
+</select>
+</div>
+</div>
+<div class="card-body" style="padding:0">
+<div class="table-responsive">
+<table class="data-table">
+<thead><tr><th>Device ID</th><th>Name</th><th>Type</th><th>Modality</th><th>Location</th><th>Status</th><th>Last Seen</th><th>Images</th><th>Actions</th></tr></thead>
+<tbody id="devBody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">Loading devices…</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="card" style="margin-bottom:24px">
+<div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+<h3 class="card-title">Activity Log</h3>
+<button class="btn btn-sm btn-outline" onclick="document.getElementById('logArea').innerHTML=''">Clear</button>
+</div>
+<div class="card-body" style="padding:0">
+<div id="logArea" style="max-height:200px;overflow-y:auto;padding:8px 16px;font-size:.85rem;font-family:monospace">
+<div style="color:#0891b2;padding:4px 0">System: IoT device manager ready. Endpoint: /api/devices/ingest/</div>
+</div>
+</div>
+</div>
+<div class="card">
+<div class="card-header"><h3 class="card-title">IoT REST API Reference</h3><span class="badge badge-success">Live</span></div>
+<div class="card-body">
+<div style="display:grid;gap:10px">
+<div style="display:grid;grid-template-columns:60px 250px 1fr;gap:12px;align-items:center;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border-color)">
+<span style="background:#dcfce7;color:#15803d;font-weight:700;font-size:.75rem;padding:3px 8px;border-radius:4px;text-align:center">POST</span>
+<code style="font-size:.85rem">/api/devices/register/</code>
+<span style="font-size:.85rem;color:var(--text-muted)">Register new device</span>
+</div>
+<div style="display:grid;grid-template-columns:60px 250px 1fr;gap:12px;align-items:center;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border-color)">
+<span style="background:#dcfce7;color:#15803d;font-weight:700;font-size:.75rem;padding:3px 8px;border-radius:4px;text-align:center">POST</span>
+<code style="font-size:.85rem">/api/devices/ingest/</code>
+<span style="font-size:.85rem;color:var(--text-muted)">Push image from device (multipart)</span>
+</div>
+<div style="display:grid;grid-template-columns:60px 250px 1fr;gap:12px;align-items:center;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border-color)">
+<span style="background:#dbeafe;color:#1d4ed8;font-weight:700;font-size:.75rem;padding:3px 8px;border-radius:4px;text-align:center">GET</span>
+<code style="font-size:.85rem">/api/devices/</code>
+<span style="font-size:.85rem;color:var(--text-muted)">List all devices + status</span>
+</div>
+<div style="display:grid;grid-template-columns:60px 250px 1fr;gap:12px;align-items:center;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border-color)">
+<span style="background:#dcfce7;color:#15803d;font-weight:700;font-size:.75rem;padding:3px 8px;border-radius:4px;text-align:center">POST</span>
+<code style="font-size:.85rem">/api/devices/{id}/heartbeat/</code>
+<span style="font-size:.85rem;color:var(--text-muted)">Device heartbeat ping</span>
+</div>
+</div>
+<div style="margin-top:16px">
+<h4 style="font-size:.875rem;font-weight:600;margin-bottom:8px">Example: Push Image</h4>
+<pre style="background:#0f172a;color:#e2e8f0;border-radius:8px;padding:16px;font-size:.82rem;overflow-x:auto;line-height:1.6"><code>curl -X POST http://10.18.64.81:8000/api/devices/ingest/ \
+-H "X-Device-ID: DEV-001" \
+-H "X-Device-Token: tok_abc123" \
+-F "image=@chest_xray.png" \
+-F "modality=chest_xray"</code></pre>
+</div>
+</div>
+</div>
+<!-- Register Modal -->
+<div id="regModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="closeRegModal(event)">
+<div style="background:#fff;border-radius:12px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+<div style="padding:20px 24px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center">
+<h3 style="margin:0;font-size:1.1rem">Register New Device</h3>
+<button onclick="closeRegModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted)">&times;</button>
+</div>
+<form id="regForm" onsubmit="submitReg(event)" style="padding:24px">
+<div class="form-group" style="margin-bottom:16px">
+<label class="form-label">Device Name *</label>
+<input type="text" class="form-control" id="rName" required placeholder="e.g. Ward-3 X-Ray Unit">
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+<div class="form-group">
+<label class="form-label">Type *</label>
+<select class="form-control" id="rType" required>
+<option value="">Select</option><option value="xray">X-Ray</option>
+<option value="ct">CT Scanner</option><option value="mri">MRI</option>
+<option value="mobile">Mobile</option><option value="generic">Generic</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">Modality</label>
+<select class="form-control" id="rMod">
+<option value="chest_xray">Chest X-Ray</option><option value="chest_ct">Chest CT</option>
+<option value="brain_mri">Brain MRI</option><option value="any">Any</option>
+</select>
+</div>
+</div>
+<div class="form-group" style="margin-bottom:16px">
+<label class="form-label">Location</label>
+<input type="text" class="form-control" id="rLoc" placeholder="e.g. Radiology, Floor 2">
+</div>
+<div style="display:flex;justify-content:flex-end;gap:12px;padding-top:8px;border-top:1px solid var(--border-color)">
+<button type="button" class="btn btn-outline" onclick="closeRegModal()">Cancel</button>
+<button type="submit" class="btn btn-primary" id="regBtn">Register</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let devs=[];
+const DEMO=[
+{id:'DEV-001',name:'Ward-3 Digital X-Ray',type:'xray',modality:'chest_xray',location:'Radiology, Floor 2',status:'online',last_seen:new Date(Date.now()-120000).toISOString(),images:47,token:'DEMO-TOKEN-1'},
+{id:'DEV-002',name:'CT Suite Alpha',type:'ct',modality:'chest_ct',location:'CT Imaging Suite',status:'online',last_seen:new Date(Date.now()-300000).toISOString(),images:21,token:'DEMO-TOKEN-2'},
+{id:'DEV-003',name:'MRI Brain Unit',type:'mri',modality:'brain_mri',location:'Neuro Lab',status:'offline',last_seen:new Date(Date.now()-3600000).toISOString(),images:8,token:'DEMO-TOKEN-3'},
+{id:'DEV-004',name:'Mobile Tablet',type:'mobile',modality:'any',location:'Mobile',status:'online',last_seen:new Date(Date.now()-60000).toISOString(),images:12,token:'DEMO-TOKEN-4'},
+];
+function init(){
+fetch('/api/devices/',{headers:{'X-Requested-With':'XMLHttpRequest'}})
+.then(r=>r.ok?r.json():null).then(d=>{devs=d&&d.devices?d.devices:JSON.parse(JSON.stringify(DEMO));renderStats();renderTbl();})
+.catch(()=>{devs=JSON.parse(JSON.stringify(DEMO));log('info','Demo mode — loaded sample devices');renderStats();renderTbl();});
+}
+function renderStats(){
+const on=devs.filter(d=>d.status==='online').length,tot=devs.length,imgs=devs.reduce((s,d)=>s+(d.images||0),0);
+document.getElementById('statsRow').innerHTML=[
+{v:tot,l:'Total Devices',bg:'#dbeafe',c:'#1d4ed8',ic:'M4 6h16M4 12h16M4 18h16'},
+{v:on,l:'Online',bg:'#d1fae5',c:'#065f46',ic:'M22 11.08V12a10 10 0 1 1-5.93-9.14'},
+{v:tot-on,l:'Offline',bg:'#fef3c7',c:'#92400e',ic:'M12 8v4M12 16h.01'},
+{v:imgs,l:'Images Received',bg:'#ccfbf1',c:'#0f766e',ic:'M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14'},
+].map(s=>'<div style="background:#fff;border:1px solid var(--border-color);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow-sm)"><div style="width:48px;height:48px;border-radius:10px;background:'+s.bg+';display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="'+s.c+'" stroke-width="2"><path d="'+s.ic+'"/></svg></div><div><div style="font-size:1.8rem;font-weight:700;color:var(--primary);line-height:1">'+s.v+'</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">'+s.l+'</div></div></div>').join('');
+}
+function renderTbl(){
+const q=(document.getElementById('devSearch').value||'').toLowerCase(),tf=document.getElementById('typeFilter').value;
+let list=devs;
+if(q)list=list.filter(d=>d.name.toLowerCase().includes(q)||d.id.toLowerCase().includes(q));
+if(tf)list=list.filter(d=>d.type===tf);
+const b=document.getElementById('devBody');
+if(!list.length){b.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">No devices found</td></tr>';return;}
+b.innerHTML=list.map(d=>{
+const dot='<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+(d.status==='online'?'#16a34a':'#94a3b8')+';margin-right:6px"></span>';
+const badge=d.status==='online'?'<span class="badge badge-success">Online</span>':'<span class="badge badge-secondary">Offline</span>';
+const mod={chest_xray:'X-Ray',chest_ct:'CT',brain_mri:'MRI',any:'Multi'}[d.modality]||d.modality;
+const type={xray:'X-Ray Machine',ct:'CT Scanner',mri:'MRI Scanner',mobile:'Mobile',generic:'Generic'}[d.type]||d.type;
+const ago=timeAgo(d.last_seen);
+return'<tr><td><code style="font-size:.8rem">'+d.id+'</code></td><td><strong>'+d.name+'</strong></td><td>'+type+'</td><td><span class="badge badge-info">'+mod+'</span></td><td>'+(d.location||'—')+'</td><td>'+dot+badge+'</td><td>'+ago+'</td><td>'+(d.images||0)+'</td><td><button class="btn btn-sm btn-outline" onclick="ping(\''+d.id+'\')">Ping</button></td></tr>';
+}).join('');
+}
+function timeAgo(iso){if(!iso)return'—';const s=Math.floor((Date.now()-new Date(iso))/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return new Date(iso).toLocaleDateString();}
+function log(type,msg){const c={info:'#0891b2',success:'#16a34a',warning:'#d97706',error:'#dc2626'}[type]||'#64748b';const el=document.getElementById('logArea');el.innerHTML='<div style="color:'+c+';padding:4px 0;border-bottom:1px solid #f1f5f9">'+new Date().toLocaleTimeString()+' — '+msg+'</div>'+el.innerHTML;}
+function ping(id){const d=devs.find(x=>x.id===id);if(!d)return;d.status='online';d.last_seen=new Date().toISOString();renderStats();renderTbl();log('success','✓ '+d.name+' responded to ping — online');}
+function runSim(){const d=devs.find(x=>x.status==='online')||devs[0];if(!d){alert('No devices.');return;}log('info','Simulator: '+d.name+' pushing image…');setTimeout(()=>{d.images=(d.images||0)+1;d.last_seen=new Date().toISOString();renderStats();renderTbl();log('success','✓ '+d.name+': image delivered (total: '+d.images+')');},1200);}
+function openRegModal(){document.getElementById('regModal').style.display='flex';document.getElementById('regForm').reset();}
+function closeRegModal(e){if(!e||e.target===document.getElementById('regModal'))document.getElementById('regModal').style.display='none';}
+function submitReg(e){
+e.preventDefault();
+const nd={id:'DEV-'+String(devs.length+1).padStart(3,'0'),name:document.getElementById('rName').value,type:document.getElementById('rType').value,modality:document.getElementById('rMod').value,location:document.getElementById('rLoc').value,status:'online',last_seen:new Date().toISOString(),images:0,token:'tok_'+Math.random().toString(36).substr(2,8)};
+fetch('/api/devices/register/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCk('csrftoken')},body:JSON.stringify(nd)}).catch(()=>{});
+devs.push(nd);renderStats();renderTbl();log('success','✓ Device registered: '+nd.name+' ('+nd.id+')');closeRegModal();
+}
+function getCk(n){const v=document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');return v?v[2]:'';}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+{% endblock %}

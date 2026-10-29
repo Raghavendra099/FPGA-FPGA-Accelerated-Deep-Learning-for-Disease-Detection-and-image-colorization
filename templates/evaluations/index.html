@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Model Evaluation — SmartMed AI{% endblock %}
+{% block page_title %}Model Evaluation Workspace{% endblock %}
+{% block page_subtitle %}Assess AI model performance across datasets and imaging modalities{% endblock %}
+{% block content %}
+<div class="eval-layout">
+<div class="alert alert-info" style="margin-bottom:24px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+<span>For academic research and educational use only. AI-generated outputs are not a confirmed medical diagnosis.</span>
+</div>
+<div class="card" style="margin-bottom:24px">
+<div class="card-header">
+<h3 class="card-title">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+Evaluation Controls
+</h3>
+</div>
+<div class="card-body">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+<div class="form-group">
+<label class="form-label">Select Model</label>
+<select class="form-control" id="modelSelect">
+<option value="">-- Choose a model --</option>
+<option value="cxr_classifier">Chest X-Ray Classifier (ResNet-18)</option>
+<option value="brain_unet">Brain MRI Segmentation (U-Net)</option>
+<option value="lung_detector">Lung CT Nodule Detector</option>
+<option value="colorizer">Medical Image Colorizer</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">Dataset</label>
+<select class="form-control" id="datasetSelect">
+<option value="sample">Sample Test Set (Built-in)</option>
+<option value="chestxray14">ChestX-ray14</option>
+<option value="brats">BraTS 2023</option>
+<option value="lidc">LIDC-IDRI</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">Evaluation Mode</label>
+<select class="form-control" id="evalMode">
+<option value="quick">Quick (50 samples)</option>
+<option value="full">Full Dataset</option>
+<option value="cross">Cross-Dataset</option>
+</select>
+</div>
+</div>
+<div class="form-actions" style="margin-top:16px;display:flex;gap:12px">
+<button class="btn btn-primary" onclick="runEvaluation()" id="runBtn">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+Run Evaluation
+</button>
+<button class="btn btn-secondary" onclick="loadDemoMetrics()">Load Demo Results</button>
+<button class="btn btn-outline" onclick="exportReport()" id="exportBtn" disabled>Export PDF</button>
+</div>
+</div>
+</div>
+<div id="evalProgress" class="card" style="display:none;margin-bottom:24px">
+<div class="card-body">
+<div style="display:flex;justify-content:space-between;margin-bottom:6px">
+<span id="progressLabel" style="font-weight:600">Initializing…</span>
+<span id="progressPct" style="font-weight:600;color:var(--primary)">0%</span>
+</div>
+<div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden">
+<div id="progressFill" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:5px;transition:width .4s ease;width:0%"></div>
+</div>
+<p id="progressSub" style="margin-top:8px;font-size:.85rem;color:var(--text-muted)">Loading model…</p>
+</div>
+</div>
+<div id="resultsPanel" style="display:none">
+<div id="kpiGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+<div class="card">
+<div class="card-header"><h3 class="card-title">ROC Curve</h3><span class="badge badge-info" id="aucBadge">AUC: —</span></div>
+<div class="card-body" style="display:flex;flex-direction:column;align-items:center">
+<canvas id="rocCanvas" width="380" height="280"></canvas>
+<p style="font-size:.75rem;color:var(--text-muted);margin-top:8px">TPR vs FPR</p>
+</div>
+</div>
+<div class="card">
+<div class="card-header"><h3 class="card-title">Confusion Matrix</h3></div>
+<div class="card-body"><div id="confMatrix" style="display:flex;flex-direction:column;align-items:center"></div></div>
+</div>
+</div>
+<div class="card" style="margin-bottom:24px">
+<div class="card-header"><h3 class="card-title">Per-Class Performance Metrics</h3></div>
+<div class="card-body" style="padding:0">
+<div class="table-responsive">
+<table class="data-table">
+<thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th><th>AUC</th><th>Status</th></tr></thead>
+<tbody id="metricsBody"><tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">Run evaluation to see results</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+<div class="card">
+<div class="card-header"><h3 class="card-title">Cross-Dataset Generalization</h3><span class="badge badge-warning">Research</span></div>
+<div class="card-body" style="display:flex;flex-direction:column;align-items:center"><canvas id="crossCanvas" width="380" height="220"></canvas></div>
+</div>
+<div class="card">
+<div class="card-header"><h3 class="card-title">Uncertainty Distribution</h3></div>
+<div class="card-body" style="display:flex;flex-direction:column;align-items:center"><canvas id="uncCanvas" width="380" height="220"></canvas></div>
+</div>
+</div>
+<div class="card">
+<div class="card-header"><h3 class="card-title">Model Architecture Details</h3></div>
+<div class="card-body"><div id="modelInfoGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px"></div></div>
+</div>
+</div>
+<div id="emptyState" style="background:#fff;border:2px dashed var(--border-color);border-radius:12px;padding:60px 40px;text-align:center">
+<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+<h3 style="margin:16px 0 8px;color:var(--text-dark)">No Evaluation Running</h3>
+<p style="color:var(--text-muted);max-width:480px;margin:0 auto">Select a model and dataset, then click <strong>Run Evaluation</strong> or <strong>Load Demo Results</strong>.</p>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const MI={
+cxr_classifier:{Name:'Chest X-Ray Classifier',Arch:'ResNet-18 (PyTorch)',Input:'224×224 px',Output:'Normal/Pneumonia/Effusion/Cardiomegaly',Params:'~11.7M',Uncertainty:'MC Dropout N=10',Modality:'Chest X-Ray'},
+brain_unet:{Name:'Brain Tumor Segmentation',Arch:'U-Net skip connections',Input:'256×256 px',Output:'Binary mask (tumor)',Params:'~31.0M',Uncertainty:'Patch-ensemble',Modality:'Brain MRI'},
+lung_detector:{Name:'Lung Nodule Detector',Arch:'FPN (PyTorch)',Input:'512×512 px',Output:'Nodule boxes + scores',Params:'~25.3M',Uncertainty:'Ensemble spread',Modality:'Chest CT'},
+colorizer:{Name:'Medical Colorizer',Arch:'CLAHE + Spectral mapping',Input:'Any resolution',Output:'Pseudo-colored RGB',Params:'N/A',Uncertainty:'SSIM score',Modality:'Any'},
+};
+const D={
+cxr_classifier:{kpis:[{l:'Accuracy',v:'87.4%',s:'50 test'},{l:'Macro F1',v:'0.851',s:'weighted'},{l:'Mean AUC',v:'0.924',s:'per-class'},{l:'Uncertainty',v:'0.103',s:'MC-Dropout σ'}],cls:[{c:'Normal',p:.91,r:.89,f:.90,n:15,a:.96},{c:'Pneumonia',p:.85,r:.88,f:.87,n:12,a:.93},{c:'Effusion',p:.82,r:.79,f:.80,n:13,a:.91},{c:'Cardiomegaly',p:.88,r:.80,f:.84,n:10,a:.94}],cm:[[13,1,1,0],[1,10,1,0],[1,2,10,0],[0,0,2,8]],auc:.924,cr:[87,81,79,84],unc:[28,22,15,10,7,4,2,1,1,0,0]},
+brain_unet:{kpis:[{l:'Dice',v:'0.823',s:'tumor'},{l:'IoU',v:'0.741',s:'int/union'},{l:'Pixel Acc',v:'94.6%',s:'overall'},{l:'HD95',v:'8.2px',s:'Hausdorff'}],cls:[{c:'Background',p:.97,r:.98,f:.97,n:30,a:.99},{c:'Tumor',p:.81,r:.79,f:.80,n:20,a:.91}],cm:[[28,2],[4,16]],auc:.93,cr:[82,77,74,79],unc:[20,18,14,10,8,5,3,2,0,0,0]},
+lung_detector:{kpis:[{l:'mAP@0.5',v:'0.769',s:'detect'},{l:'Sensitivity',v:'82.1%',s:'recall'},{l:'Specificity',v:'88.4%',s:'TNR'},{l:'FP/Scan',v:'1.4',s:'per scan'}],cls:[{c:'No Nodule',p:.88,r:.90,f:.89,n:20,a:.93},{c:'≤6mm',p:.74,r:.78,f:.76,n:18,a:.86},{c:'>6mm',p:.82,r:.80,f:.81,n:12,a:.91}],cm:[[18,2,0],[3,14,1],[0,2,10]],auc:.90,cr:[77,71,68,74],unc:[22,19,15,11,8,5,3,1,0,0,0]},
+colorizer:{kpis:[{l:'SSIM',v:'0.912',s:'structural'},{l:'PSNR',v:'31.4dB',s:'S/N'},{l:'Time',v:'0.24s',s:'per img'},{l:'Count',v:'50',s:'test set'}],cls:[{c:'X-Ray',p:.91,r:.93,f:.92,n:18,a:.97},{c:'CT',p:.89,r:.88,f:.88,n:16,a:.95},{c:'MRI',p:.94,r:.92,f:.93,n:16,a:.98}],cm:[[17,1,0],[2,14,0],[0,1,15]],auc:.967,cr:[91,88,86,90],unc:[30,25,18,12,7,4,2,1,0,0,0]}
+};
+function runEvaluation(){
+const m=document.getElementById('modelSelect').value;
+if(!m){alert('Select a model first.');return;}
+document.getElementById('emptyState').style.display='none';
+document.getElementById('resultsPanel').style.display='none';
+document.getElementById('evalProgress').style.display='block';
+document.getElementById('runBtn').disabled=true;
+const st=[{p:10,l:'Loading weights…',s:'Deserializing state dict'},{p:25,l:'Preparing data…',s:'Preprocessing images'},{p:45,l:'Inference…',s:'Forward pass'},{p:65,l:'Metrics…',s:'P/R/F1/AUC'},{p:82,l:'Confusion matrix…',s:'Aggregating'},{p:95,l:'Visualizing…',s:'ROC curves'},{p:100,l:'Complete!',s:'Done'}];
+let i=0;
+const iv=setInterval(()=>{
+if(i>=st.length){clearInterval(iv);setTimeout(()=>{document.getElementById('evalProgress').style.display='none';document.getElementById('runBtn').disabled=false;renderAll(D[m]||D.cxr_classifier,m);},500);return;}
+document.getElementById('progressFill').style.width=st[i].p+'%';
+document.getElementById('progressPct').textContent=st[i].p+'%';
+document.getElementById('progressLabel').textContent=st[i].l;
+document.getElementById('progressSub').textContent=st[i].s;
+i++;
+},700);
+}
+function loadDemoMetrics(){
+const m=document.getElementById('modelSelect').value||'cxr_classifier';
+document.getElementById('modelSelect').value=m;
+document.getElementById('emptyState').style.display='none';
+renderAll(D[m]||D.cxr_classifier,m);
+}
+function renderAll(d,model){
+document.getElementById('resultsPanel').style.display='block';
+document.getElementById('exportBtn').disabled=false;
+document.getElementById('kpiGrid').innerHTML=d.kpis.map(k=>'<div style="background:#fff;border:1px solid var(--border-color);border-radius:10px;padding:20px;text-align:center;box-shadow:var(--shadow-sm)"><div style="font-size:2rem;font-weight:700;color:var(--primary)">'+k.v+'</div><div style="font-size:.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">'+k.l+'</div><div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">'+k.s+'</div></div>').join('');
+document.getElementById('metricsBody').innerHTML=d.cls.map(c=>{
+const b=c.f>=.85?'<span class="badge badge-success">Good</span>':c.f>=.75?'<span class="badge badge-warning">Fair</span>':'<span class="badge badge-danger">Low</span>';
+return'<tr><td><strong>'+c.c+'</strong></td><td>'+(c.p*100).toFixed(1)+'%</td><td>'+(c.r*100).toFixed(1)+'%</td><td>'+c.f.toFixed(3)+'</td><td>'+c.n+'</td><td>'+c.a.toFixed(3)+'</td><td>'+b+'</td></tr>';
+}).join('');
+const lb=d.cls.map(c=>c.c);
+let cm='<table style="border-collapse:collapse"><thead><tr><th style="background:#f1f5f9;padding:8px 12px;border:1px solid var(--border-color);font-size:.75rem">↓Act\\Pred→</th>';
+lb.forEach(l=>{cm+='<th style="background:#f1f5f9;padding:8px 12px;border:1px solid var(--border-color);font-size:.75rem">'+l+'</th>';});cm+='</tr></thead><tbody>';
+d.cm.forEach((row,i)=>{cm+='<tr><th style="background:#f1f5f9;padding:8px 12px;border:1px solid var(--border-color);font-size:.75rem">'+(lb[i]||'C'+i)+'</th>';row.forEach((v,j)=>{const bg=i===j?'#d1fae5':'#fee2e2';const cl=i===j?'#065f46':'#991b1b';cm+='<td style="background:'+bg+';color:'+cl+';padding:8px 16px;border:1px solid var(--border-color);text-align:center;font-weight:600">'+v+'</td>';});cm+='</tr>';});
+cm+='</tbody></table>';
+document.getElementById('confMatrix').innerHTML=cm;
+drawROC(d);drawCross(d);drawUnc(d);
+const info=MI[model]||{};
+document.getElementById('modelInfoGrid').innerHTML=Object.entries(info).map(([k,v])=>'<div><div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">'+k+'</div><div style="font-weight:600;font-size:.9rem;color:var(--text-dark);margin-top:2px">'+v+'</div></div>').join('');
+}
+function drawROC(d){
+const cv=document.getElementById('rocCanvas'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,p={t:20,r:20,b:40,l:48};
+ctx.clearRect(0,0,W,H);
+const tx=f=>p.l+f*(W-p.l-p.r),ty=t=>p.t+(1-t)*(H-p.t-p.b);
+ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+ctx.beginPath();ctx.moveTo(tx(0),ty(0));ctx.lineTo(tx(1),ty(1));ctx.stroke();ctx.setLineDash([]);
+const pts=[{x:0,y:0}];for(let i=1;i<=20;i++){const x=i/20;pts.push({x,y:Math.min(1,Math.pow(x,1/(d.auc*3)))});}pts.push({x:1,y:1});
+ctx.strokeStyle='#0284C7';ctx.lineWidth=2.5;ctx.fillStyle='rgba(2,132,199,.1)';
+ctx.beginPath();pts.forEach((pt,i)=>i===0?ctx.moveTo(tx(pt.x),ty(pt.y)):ctx.lineTo(tx(pt.x),ty(pt.y)));
+ctx.stroke();ctx.lineTo(tx(1),ty(0));ctx.lineTo(tx(0),ty(0));ctx.closePath();ctx.fill();
+ctx.fillStyle='#64748b';ctx.font='11px system-ui';ctx.textAlign='center';
+ctx.fillText('False Positive Rate',W/2,H-4);
+ctx.save();ctx.translate(13,H/2+20);ctx.rotate(-Math.PI/2);ctx.fillText('True Positive Rate',0,0);ctx.restore();
+document.getElementById('aucBadge').textContent='AUC: '+d.auc.toFixed(3);
+}
+function drawCross(d){
+const cv=document.getElementById('crossCanvas'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,p={t:25,r:20,b:45,l:45};
+ctx.clearRect(0,0,W,H);
+const lb=['Train','Val','Ext-1','Ext-2'],co=['#0284C7','#0891b2','#7c3aed','#d97706'],bw=(W-p.l-p.r)/lb.length;
+lb.forEach((l,i)=>{const v=d.cr[i]/100,bx=p.l+i*bw+bw*.15,bww=bw*.7,bh=v*(H-p.t-p.b),by=p.t+(H-p.t-p.b)-bh;
+ctx.fillStyle=co[i];ctx.fillRect(bx,by,bww,bh);
+ctx.fillStyle='#0f172a';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText(d.cr[i]+'%',bx+bww/2,by-5);
+ctx.fillStyle='#64748b';ctx.font='10px system-ui';ctx.fillText(l,bx+bww/2,H-5);
+});ctx.textAlign='left';
+}
+function drawUnc(d){
+const cv=document.getElementById('uncCanvas'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,p={t:15,r:20,b:35,l:40};
+ctx.clearRect(0,0,W,H);
+const mx=Math.max(...d.unc),bw=(W-p.l-p.r)/d.unc.length;
+d.unc.forEach((v,i)=>{const bh=(v/mx)*(H-p.t-p.b),bx=p.l+i*bw+2,by=H-p.b-bh;
+ctx.fillStyle='rgba(2,132,199,'+(0.3+0.7*(1-i/d.unc.length))+')';ctx.fillRect(bx,by,bw-4,bh);
+});
+ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.l,p.t);ctx.lineTo(p.l,H-p.b);ctx.lineTo(W-p.r,H-p.b);ctx.stroke();
+ctx.fillStyle='#64748b';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('Prediction Uncertainty (σ) — Low → High',W/2,H-3);
+}
+function exportReport(){
+const m=document.getElementById('modelSelect').value||'cxr_classifier';
+fetch('/evaluations/export/?model='+m,{headers:{'X-Requested-With':'XMLHttpRequest'}})
+.then(r=>{if(r.ok)r.blob().then(b=>{const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='eval_'+m+'.pdf';a.click();});else alert('Export endpoint: /evaluations/export/?model='+m);})
+.catch(()=>alert('PDF export: /evaluations/export/?model='+m));
+}
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('modelSelect').value='cxr_classifier';loadDemoMetrics();});
+</script>
+{% endblock %}

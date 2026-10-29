@@ -1,0 +1,3 @@
+"""
+Brain tumor app package.
+"""

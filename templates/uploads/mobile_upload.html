@@ -1,0 +1,82 @@
+{% extends "base_mobile.html" %}
+
+{% block content %}
+<div class="mobile-upload-card" id="mobileUploadCard">
+  <!-- Header -->
+  <div style="margin-bottom: 16px;">
+    <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #0284C7, #0D9488); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 18px; margin-bottom: 8px;">SM</div>
+    <h2 style="font-size: 18px; font-weight: 700; color: var(--primary-navy); margin-bottom: 4px;">SmartMed AI Mobile Upload</h2>
+    <p style="font-size: 12px; color: var(--text-muted);">Secure Medical Image Transfer</p>
+  </div>
+
+  {% if error_message %}
+  <div class="alert alert-danger" style="text-align: left; font-size: 13px;">
+    {{ error_message }}
+  </div>
+  <p style="font-size: 12px; color: var(--text-muted); margin-top: 14px;">
+    Please ask the researcher at the laptop portal to create a new session.
+  </p>
+
+  {% elif already_uploaded %}
+  <div class="alert alert-info" style="text-align: left; font-size: 13px;">
+    An image has already been submitted for this session and is currently awaiting human review on the laptop portal.
+  </div>
+
+  {% else %}
+  <div class="alert alert-danger" id="mobileErrorAlert" style="display: none; text-align: left; font-size: 12.5px;"></div>
+
+  <form id="mobileUploadForm" action="{% url 'uploads:api_upload' token %}" method="POST" enctype="multipart/form-data">
+    <!-- Image Preview / File Drop Zone -->
+    <div class="mobile-preview-box" id="previewBox" onclick="document.getElementById('mobileFileInput').click()">
+      <div id="placeholderText" style="color: var(--text-muted); font-size: 13px; padding: 12px;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" style="margin-bottom: 6px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <div><b>Tap to Select Medical Scan</b></div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Supported: JPEG, PNG (Max {{ max_size_mb }}MB)</div>
+      </div>
+      <img id="previewImg" src="" alt="Preview" style="display: none;">
+    </div>
+
+    <input type="file" id="mobileFileInput" name="image" accept="image/jpeg,image/png,image/jpg" style="display: none;">
+
+    <div id="fileMetaText" style="font-size: 12px; color: var(--accent-teal); font-weight: 600; margin-bottom: 12px;"></div>
+
+    <!-- Upload Progress -->
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar-fill" id="progressBarFill"></div>
+    </div>
+
+    <div style="display: flex; gap: 8px; justify-content: center;">
+      <button type="button" class="btn btn-outline btn-sm" id="removeBtn" style="display: none;">Change Image</button>
+      <button type="submit" class="btn btn-primary" id="uploadBtn" style="flex: 1; padding: 12px;" disabled>
+        Upload to Laptop
+      </button>
+    </div>
+  </form>
+
+  <div style="margin-top: 18px; font-size: 11px; color: var(--text-dim); line-height: 1.4;">
+    Session: <code style="font-size: 11px;">{{ session.session_id }}</code><br/>
+    Images are strictly validated and encrypted in transit.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Success Confirmation Card (Shown dynamically after upload) -->
+<div class="mobile-upload-card" id="mobileSuccessCard" style="display: none;">
+  <div style="width: 52px; height: 52px; background-color: #ECFDF5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <h2 style="font-size: 19px; font-weight: 700; color: #065F46; margin-bottom: 6px;">Image Uploaded Successfully</h2>
+  <p style="font-size: 13px; color: var(--text-muted); line-height: 1.4; margin-bottom: 16px;">
+    Your medical scan has been transferred to the laptop portal and is currently awaiting human clinician review before processing.
+  </p>
+  <div style="background: var(--bg-subtle); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 16px; border: 1px solid var(--border-subtle);">
+    <span style="color: var(--text-muted);">Upload Reference:</span><br/>
+    <b style="font-family: monospace; color: var(--primary-navy);" id="uploadRefSpan">IMG-REF-RECEIVED</b>
+  </div>
+  <p style="font-size: 11.5px; color: var(--text-dim);">You may safely close this browser tab.</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/mobile_upload.js"></script>
+{% endblock %}
